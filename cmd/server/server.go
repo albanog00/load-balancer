@@ -13,24 +13,6 @@ const (
 	proxy_addr  = "127.0.0.1:7324"
 )
 
-func main() {
-	listener, err := net.Listen(conn_type, server_addr)
-	if err != nil {
-		log.Fatalf("Error issued: %s\n", err.Error())
-	}
-
-	log.Printf("Listening on %s\n", server_addr)
-
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatalf("Error issued while accepting connection: %s\n", err.Error())
-		}
-
-		go handle_conn(conn)
-	}
-}
-
 func handle_conn(conn net.Conn) {
 	addr := conn.RemoteAddr().String()
 
@@ -58,4 +40,22 @@ func handle_conn(conn net.Conn) {
 	log.Printf("Request from %s\n%s\n", addr, builder.String())
 
 	conn.Write(builder.Bytes())
+}
+
+func main() {
+	listener, err := net.Listen(conn_type, server_addr)
+	if err != nil {
+		log.Fatalf("Error issued: %s\n", err.Error())
+	}
+
+	log.Printf("Listening on %s\n", server_addr)
+
+	for {
+		conn, err := listener.Accept()
+		if err != nil {
+			log.Fatalf("Error issued while accepting connection: %s\n", err.Error())
+		}
+
+		go handle_conn(conn)
+	}
 }
