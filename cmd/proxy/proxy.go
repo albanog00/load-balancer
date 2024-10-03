@@ -8,13 +8,21 @@ import (
 )
 
 const (
-	conn_type   = "tcp4"
-	server_addr = "127.0.0.1:7325"
-	proxy_addr  = "127.0.0.1:7324"
+	conn_type  = "tcp4"
+	proxy_addr = "127.0.0.1:7324"
 )
 
+var server_ptr int = -1
+var server_addrs = []string{
+	"127.0.0.1:7325",
+	"127.0.0.1:7326",
+	"127.0.0.1:7327",
+	"127.0.0.1:7328",
+}
+
 func get_server_conn() (net.Conn, error) {
-	s_addr, err := net.ResolveTCPAddr(conn_type, server_addr)
+	server_ptr = (server_ptr + 1) % len(server_addrs)
+	s_addr, err := net.ResolveTCPAddr(conn_type, server_addrs[server_ptr])
 	if err != nil {
 		return nil, fmt.Errorf("Could not resolve server address: %s\n", err.Error())
 	}
@@ -40,7 +48,7 @@ func handle_conn(client_conn net.Conn) {
 		log.Fatalf("Error connecting to server: %s\n", err.Error())
 	}
 
-	log.Printf("Forwarding request to server at address %s\n", server_addr)
+	log.Printf("Forwarding request to server at address %s\n", server_addrs[server_ptr])
 
 	_, err = io.Copy(server_conn, client_conn)
 	if err != nil {

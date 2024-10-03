@@ -5,24 +5,28 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"os/signal"
+	"sync"
 )
 
 const (
-	conn_type   = "tcp4"
-	server_addr = "127.0.0.1:7325"
-	proxy_addr  = "127.0.0.1:7324"
+	conn_type  = "tcp4"
+	proxy_addr = "127.0.0.1:7324"
 )
+
+var server_addrs = []string{
+	"127.0.0.1:7325",
+	"127.0.0.1:7326",
+	"127.0.0.1:7327",
+	"127.0.0.1:7328",
+}
 
 func handle_conn(conn net.Conn) {
 	addr := conn.RemoteAddr().String()
 
 	defer conn.Close()
 	defer log.Printf("Closing socket %s\n", addr)
-
-	// if addr != proxy_addr {
-	// 	log.Printf("%s unauthorized\n", addr)
-	// 	return
-	// }
 
 	builder := bytes.Buffer{}
 	buf := make([]byte, 1024)
@@ -43,19 +47,40 @@ func handle_conn(conn net.Conn) {
 }
 
 func main() {
-	listener, err := net.Listen(conn_type, server_addr)
-	if err != nil {
-		log.Fatalf("Error issued: %s\n", err.Error())
-	}
+	wait := sync.WaitGroup{}
+	wait.Add(len(server_addrs))
 
-	log.Printf("Listening on %s\n", server_addr)
+	signal_chan := make(chan os.Signal, len(server_addrs))
+	signal.Notify(signal_chan, os.Interrupt)
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			log.Fatalf("Error issued while accepting connection: %s\n", err.Error())
+	go func() {
+		<-signal_chan
+		log.Printf("Interrupt signal received. Shutting down\n")
+		for range server_addrs {
+			wait.Done()
 		}
+	}()
 
-		go handle_conn(conn)
+	for _, server_addr := range server_addrs {
+		go func() {
+			listener, err := net.Listen(conn_type, server_addr)
+			if err != nil {
+				log.Fatalf("Error issued: %s\n", err.Error())
+			}
+
+			log.Printf("Listening on %s\n", server_addr)
+
+			for {
+				conn, err := listener.Accept()
+				if err != nil {
+					log.Fatalf("Error while accepting connection: %s\n", err.Error())
+					break
+				}
+
+				go handle_conn(conn)
+			}
+		}()
 	}
+
+	wait.Wait()
 }
