@@ -55,7 +55,7 @@ func main() {
 
 	go func() {
 		<-signal_chan
-		log.Printf("Interrupt signal received. Shutting down\n")
+		log.Printf("Interrupt signal received. Closing listeners.\n")
 		for range server_addrs {
 			wait.Done()
 		}
